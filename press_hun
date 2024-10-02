@@ -1,0 +1,134 @@
+import streamlit as st
+import openai
+import os
+from datetime import datetime
+
+
+# OpenAI API 키를 환경 변수에서 불러오기
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+# 보도자료 생성 함수
+def generate_press_release(content, progress, plan, press_type):
+    # 고정된 회사명과 오늘 날짜 (화면에는 표시하지 않음)
+    company_name = "평택시청"
+    today = datetime.today().date()
+
+    # 보도자료 유형에 따라 프롬프트 다르게 구성
+    if press_type == "정책 발표":
+        prompt = f"""회사명: {company_name}
+발표 내용:
+- 내용: {content}
+- 경과: {progress}
+- 계획: {plan}
+날짜: {today}
+
+위 정보를 바탕으로 공식 정책 발표 보도자료를 작성해주세요. 보도자료는 다음 구조를 따라야 합니다:
+
+1. 헤드라인
+2. 부제목 (선택적)
+3. 장소 및 날짜
+4. 첫 단락 (주요 내용 요약)
+5. 본문 (2-3 단락, 상세 내용 및 인용구 포함)
+6. 회사 소개
+7. 연락처 정보
+
+보도자료는 객관적이고 공식적인 톤으로 작성되어야 합니다."""
+    
+    elif press_type == "행사 안내":
+        prompt = f"""회사명: {company_name}
+발표 내용:
+- 내용: {content}
+- 경과: {progress}
+- 계획: {plan}
+날짜: {today}
+
+위 정보를 바탕으로 행사 안내 보도자료를 작성해주세요. 보도자료는 다음 구조를 따라야 합니다:
+
+1. 행사명 및 주요 정보
+2. 부제목 (선택적)
+3. 장소 및 날짜
+4. 첫 단락 (행사의 주요 내용 요약)
+5. 본문 (2-3 단락, 행사에 대한 상세 정보 및 인용구 포함)
+6. 회사 소개
+7. 연락처 정보
+
+보도자료는 공식적이고 명확한 톤으로 작성되어야 합니다."""
+    
+    else:  # 업적 보고
+        prompt = f"""회사명: {company_name}
+발표 내용:
+- 내용: {content}
+- 경과: {progress}
+- 계획: {plan}
+날짜: {today}
+
+위 정보를 바탕으로 회사의 주요 업적에 대한 보고서 형식의 보도자료를 작성해주세요. 보도자료는 다음 구조를 따라야 합니다:
+
+1. 헤드라인 (주요 성과 강조)
+2. 부제목 (선택적)
+3. 장소 및 날짜
+4. 첫 단락 (주요 성과 요약)
+5. 본문 (2-3 단락, 상세 내용 및 인용구 포함)
+6. 회사 소개
+7. 연락처 정보
+
+보도자료는 전문적이고 권위있는 톤으로 작성되어야 합니다."""
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a professional press release writer."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.7,
+        )
+        return response.choices[0]['message']['content'].strip()
+    except Exception as e:
+        return f"오류가 발생했습니다: {str(e)}"
+
+# Streamlit 페이지 구성
+st.title("AI 보도자료 작성 도우미")
+
+# 보도자료 유형 선택 (라디오 버튼)
+press_type = st.radio(
+    "보도자료 유형을 선택하세요:",
+    ('정책 발표', '행사 안내', '업적 보고')
+)
+
+# 선택된 보도자료 유형에 따른 설명과 예시 표시
+if press_type == "정책 발표":
+    st.info("정책 발표는 새로운 정책에 대한 세부 사항, 현재 진행 상황, 그리고 향후 계획을 포함합니다.")
+    content_placeholder = "예: 평택시청은 새로운 환경 정책을 발표했습니다."
+    progress_placeholder = "예: 이 정책은 2024년 1월부터 시민들과 협의를 통해 준비되었습니다."
+    plan_placeholder = "예: 향후 1년 동안 이 정책을 시행할 계획입니다."
+elif press_type == "행사 안내":
+    st.info("행사 안내는 행사에 대한 구체적인 내용, 현재 진행 상황, 그리고 향후 계획을 설명합니다.")
+    content_placeholder = "예: 평택시청에서 환경 보호 관련 행사를 개최합니다."
+    progress_placeholder = "예: 이 행사는 매년 5월에 진행되었으며, 이번에는 규모가 확대되었습니다."
+    plan_placeholder = "예: 이번 행사는 2024년 6월 10일에 평택시청 광장에서 열릴 예정입니다."
+else:  # 업적 보고
+    st.info("업적 보고는 회사의 주요 성과를 요약하고, 그 성과에 대한 상세 내용과 계획을 포함합니다.")
+    content_placeholder = "예: 평택시청은 환경 보호를 위한 여러 성과를 거두었습니다."
+    progress_placeholder = "예: 지난 5년 동안 시민들과 협력하여 다양한 환경 보호 프로그램을 성공적으로 진행했습니다."
+    plan_placeholder = "예: 향후 3년 동안 더 많은 프로그램을 통해 성과를 확대할 계획입니다."
+
+# 모든 입력 필드의 높이를 70으로 통일
+input_height = 70
+
+# 사용자로부터 발표 내용 입력받기 (유형별로 예시 추가, 높이 70으로 통일)
+content = st.text_area(f"발표 내용을 입력하세요 ({press_type} 내용):", height=input_height, placeholder=content_placeholder)
+progress = st.text_area(f"발표 내용을 입력하세요 ({press_type} 경과):", height=input_height, placeholder=progress_placeholder)
+plan = st.text_area(f"발표 내용을 입력하세요 ({press_type} 계획):", height=input_height, placeholder=plan_placeholder)
+
+# 버튼을 눌렀을 때 보도자료 생성
+if st.button("보도자료 생성"):
+    if content and progress and plan:
+        with st.spinner(f"{press_type} 보도자료 생성 중..."):
+            press_release = generate_press_release(content, progress, plan, press_type)
+            st.success(f"{press_type} 보도자료가 성공적으로 생성되었습니다!")
+            st.write(press_release)
+    else:
+        st.warning("모든 입력값을 입력해주세요.")
